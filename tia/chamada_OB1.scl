@@ -1,0 +1,8 @@
+// Nova network no Main [OB1], DEPOIS da chamada do FB da aplicação.
+// Ao inserir, o TIA pede para criar o DB de instância: aceite o nome "FB_ContagemN1_DB".
+// Confira os nomes "leituraModbus".dadosLeitura e "aplicacaoN1_DB" com os do SEU projeto.
+
+"FB_ContagemN1_DB"(pcRampaVerm  := "leituraModbus".dadosLeitura[20].%X3,
+                   pcRampaVerde := "leituraModbus".dadosLeitura[20].%X4,
+                   pcRampaAmar  := "leituraModbus".dadosLeitura[20].%X5,
+                   estado       := "aplicacaoN1_DB".estado);

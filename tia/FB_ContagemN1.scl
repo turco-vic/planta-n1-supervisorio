@@ -1,0 +1,66 @@
+// ============================================================================
+// Planta N1 - Contagem de produção (Somativa_1)
+// Pode ser importado em: PLC_1 > External source files > Add new external file
+// e depois botão direito > Generate blocks from source.
+// Se preferir, crie os blocos à mão e cole só o trecho entre BEGIN e END_FUNCTION_BLOCK.
+// ============================================================================
+
+DATA_BLOCK "DB_Producao_N1"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR RETAIN
+      contPecasVermelhas : Int;   // Quantidade de peças vermelhas
+      contPecasVerdes : Int;   // Quantidade de peças verdes
+      contPecasAmarelas : Int;   // Quantidade de peças amarelas
+      contPecasTotal : Int;   // Produção total (soma das três cores)
+      estadoMaquina : Int;   // Cópia do estado da máquina para o OPC UA
+   END_VAR
+
+BEGIN
+
+END_DATA_BLOCK
+
+FUNCTION_BLOCK "FB_ContagemN1"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      pcRampaVerm : Bool;   // "leituraModbus".dadosLeitura[20].%X3
+      pcRampaVerde : Bool;   // "leituraModbus".dadosLeitura[20].%X4
+      pcRampaAmar : Bool;   // "leituraModbus".dadosLeitura[20].%X5
+      estado : Int;   // saída "estado" do FB da aplicação
+   END_VAR
+
+   VAR 
+      rtVerm {InstructionName := 'R_TRIG'; LibVersion := '1.0'} : R_TRIG;
+      rtVerde {InstructionName := 'R_TRIG'; LibVersion := '1.0'} : R_TRIG;
+      rtAmar {InstructionName := 'R_TRIG'; LibVersion := '1.0'} : R_TRIG;
+   END_VAR
+
+BEGIN
+	// Borda de subida nos sensores das rampas:
+	// cada peça gera um único pulso, então é contada uma única vez.
+	#rtVerm(CLK := #pcRampaVerm);
+	#rtVerde(CLK := #pcRampaVerde);
+	#rtAmar(CLK := #pcRampaAmar);
+	
+	IF #rtVerm.Q THEN
+	    "DB_Producao_N1".contPecasVermelhas := "DB_Producao_N1".contPecasVermelhas + 1;
+	END_IF;
+	
+	IF #rtVerde.Q THEN
+	    "DB_Producao_N1".contPecasVerdes := "DB_Producao_N1".contPecasVerdes + 1;
+	END_IF;
+	
+	IF #rtAmar.Q THEN
+	    "DB_Producao_N1".contPecasAmarelas := "DB_Producao_N1".contPecasAmarelas + 1;
+	END_IF;
+	
+	// Produção total = soma dos três contadores de cor
+	"DB_Producao_N1".contPecasTotal := "DB_Producao_N1".contPecasVermelhas
+	                                 + "DB_Producao_N1".contPecasVerdes
+	                                 + "DB_Producao_N1".contPecasAmarelas;
+	
+	// Estado da máquina publicado no OPC UA
+	"DB_Producao_N1".estadoMaquina := #estado;
+	
+END_FUNCTION_BLOCK
