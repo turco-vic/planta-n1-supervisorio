@@ -169,7 +169,7 @@ onUnmounted(() => {
       <section class="card">
         <h2>Indicadores de produção</h2>
         <div class="indicadores">
-          <div v-for="i in indicadores" :key="i.chave" class="indicador">
+          <div v-for="i in indicadores" :key="i.chave" class="indicador" :style="{ '--cor': i.cor }">
             <svg class="anel" viewBox="0 0 120 120" role="img" :aria-label="`${i.titulo}: ${i.valor}`">
               <circle cx="60" cy="60" :r="RAIO" class="anel__fundo" />
               <circle
@@ -180,6 +180,7 @@ onUnmounted(() => {
             </svg>
             <strong>{{ i.titulo }}</strong>
             <span class="indicador__porcentagem" v-if="i.chave !== 'total'">{{ i.porcentagem }}% da produção</span>
+            <span class="indicador__porcentagem" v-else>todas as cores</span>
             <small>{{ i.legenda }}</small>
           </div>
         </div>
@@ -190,15 +191,30 @@ onUnmounted(() => {
           <h2>Estado da aplicação</h2>
           <div class="estado">
             <span class="estado__numero">{{ estado }}</span>
-            <span class="estado__nome">{{ estadoAtual.nome }}</span>
+            <div>
+              <span class="estado__nome">{{ estadoAtual.nome }}</span>
+              <p class="estado__acao">{{ estadoAtual.acao }}</p>
+            </div>
           </div>
-          <p class="texto">{{ estadoAtual.acao }}</p>
+          <div class="etapas" aria-hidden="true">
+            <span
+              v-for="(_, id) in ESTADOS" :key="id"
+              class="etapas__item" :class="{ 'etapas__item--ativo': Number(id) === estado }"
+            >{{ id }}</span>
+          </div>
         </section>
 
         <section class="card">
           <h2>Comunicação OPC UA</h2>
-          <p class="texto">{{ mensagemComunicacao }}</p>
-          <p class="texto texto--suave">Última leitura: {{ textoUltimaLeitura }}</p>
+          <div class="com" :class="`com--${status.tipo}`">
+            <span class="com__ponto"></span>
+            <span>{{ mensagemComunicacao }}</span>
+          </div>
+          <dl class="detalhes">
+            <div><dt>Situação</dt><dd>{{ status.texto }}</dd></div>
+            <div><dt>Última leitura</dt><dd>{{ textoUltimaLeitura }}</dd></div>
+            <div><dt>Backend</dt><dd>{{ BACKEND }}</dd></div>
+          </dl>
         </section>
       </div>
     </main>
@@ -207,129 +223,246 @@ onUnmounted(() => {
 
 <style>
 :root {
-  --fundo: #eef1f4;
+  --fundo: #f1f4f8;
   --card: #ffffff;
-  --borda: #dde2e7;
-  --texto: #1f2a36;
-  --texto-suave: #6b7682;
-  --cabecalho: #1e3246;
-  --azul: #1a8fa8;
-  --vermelho: #c62828;
-  --verde: #2e7d32;
-  --amarelo: #f2a52b;
+  --borda: #e3e8ef;
+  --texto: #1b2735;
+  --texto-suave: #6b7787;
+  --cabecalho-1: #14273a;
+  --cabecalho-2: #1f3d57;
+  --destaque: #2bb3a0;
+  --azul: #1a93ad;
+  --vermelho: #d6373a;
+  --verde: #2f9447;
+  --amarelo: #f0a623;
+  --sombra: 0 1px 2px rgba(16, 32, 52, 0.05), 0 8px 24px rgba(16, 32, 52, 0.06);
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
   background: var(--fundo);
   color: var(--texto);
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 </style>
 
 <style scoped>
+/* ---------- Cabeçalho ---------- */
 .topo {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 18px 24px;
-  background: var(--cabecalho);
+  gap: 14px;
+  padding: 22px max(16px, calc((100% - 1100px) / 2 + 16px));
+  background: linear-gradient(120deg, var(--cabecalho-1), var(--cabecalho-2));
   color: #fff;
-  border-bottom: 4px solid #2bb3a0;
+  box-shadow: inset 0 -4px 0 var(--destaque);
 }
-.topo h1 { margin: 0; font-size: 1.6rem; font-weight: 500; }
-.topo p { margin: 6px 0 0; font-size: 0.85rem; opacity: 0.85; }
+.topo h1 { margin: 0; font-size: 1.6rem; font-weight: 600; letter-spacing: -0.01em; }
+.topo p { margin: 6px 0 0; font-size: 0.88rem; color: rgba(255, 255, 255, 0.72); }
 .topo__acoes { display: flex; align-items: center; gap: 10px; }
 
 .selo {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
-  border-radius: 4px;
+  padding: 8px 16px;
+  border-radius: 999px;
   font-weight: 600;
   font-size: 0.85rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
 }
-.selo__ponto { width: 8px; height: 8px; border-radius: 50%; background: #fff; }
+.selo__ponto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  animation: pulsar 1.6s ease-out infinite;
+}
 .selo--ok { background: var(--verde); }
 .selo--alarme { background: var(--vermelho); }
 .selo--aviso { background: #d98a00; }
 
+@keyframes pulsar {
+  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+  100% { box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); }
+}
+
 .botao-sim {
-  padding: 7px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 4px;
-  background: transparent;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
   color: #fff;
+  font: inherit;
   font-size: 0.8rem;
   cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
 }
-.botao-sim:hover, .botao-sim.ativo { background: rgba(255, 255, 255, 0.15); }
+.botao-sim:hover { background: rgba(255, 255, 255, 0.16); }
+.botao-sim.ativo { background: #fff; color: var(--cabecalho-1); border-color: #fff; font-weight: 600; }
 
+/* ---------- Estrutura ---------- */
 .conteudo {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 20px 16px;
+  padding: 24px 16px 32px;
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 .card {
   background: var(--card);
   border: 1px solid var(--borda);
-  border-radius: 6px;
-  padding: 18px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: var(--sombra);
 }
-.card h2 { margin: 0 0 16px; font-size: 1.15rem; font-weight: 500; }
+.card h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 18px;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.card h2::before {
+  content: '';
+  width: 4px;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--destaque);
+}
 
+/* ---------- Indicadores ---------- */
 .indicadores {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 16px;
 }
 .indicador {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 12px 8px;
+  padding: 20px 12px 16px;
   text-align: center;
-  background: #f7f9fa;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cor) 7%, #fff), #fff 60%);
   border: 1px solid var(--borda);
-  border-radius: 6px;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
-.indicador strong { font-size: 0.9rem; margin-top: 4px; }
-.indicador small { font-size: 0.72rem; color: var(--texto-suave); }
-.indicador__porcentagem { font-size: 0.8rem; font-weight: 600; color: var(--texto-suave); }
+.indicador::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: var(--cor);
+}
+.indicador:hover { transform: translateY(-2px); box-shadow: var(--sombra); }
+.indicador strong { font-size: 0.95rem; margin-top: 8px; }
+.indicador small { font-size: 0.74rem; color: var(--texto-suave); }
+.indicador__porcentagem {
+  margin: 2px 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--cor) 80%, #000);
+  background: color-mix(in srgb, var(--cor) 14%, #fff);
+}
 
-.anel { width: 100px; height: 100px; }
-.anel__fundo { fill: #fff; stroke: #e3e7eb; stroke-width: 12; }
+.anel { width: 116px; height: 116px; }
+.anel__fundo {
+  fill: #fff;
+  stroke: color-mix(in srgb, var(--cor) 16%, #fff);
+  stroke-width: 11;
+}
 .anel__valor {
   fill: none;
-  stroke-width: 12;
-  stroke-linecap: butt;
+  stroke-width: 11;
+  stroke-linecap: round;
   transform: rotate(-90deg);
   transform-origin: 60px 60px;
-  transition: stroke-dashoffset 0.6s ease;
+  transition: stroke-dashoffset 0.7s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .anel__numero {
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 700;
   text-anchor: middle;
   dominant-baseline: central;
   fill: var(--texto);
 }
 
+/* ---------- Estado e comunicação ---------- */
 .linha {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 18px;
 }
-.estado { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.estado__numero { font-size: 2.4rem; font-weight: 700; color: var(--verde); }
-.estado__nome { font-size: 1.05rem; font-weight: 600; }
-.texto { margin: 10px 0 0; font-size: 0.9rem; }
-.texto--suave { color: var(--texto-suave); font-size: 0.8rem; }
+.estado { display: flex; align-items: center; gap: 16px; }
+.estado__numero {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--verde), #3fb35c);
+  box-shadow: 0 6px 16px rgba(47, 148, 71, 0.3);
+}
+.estado__nome { font-size: 1.1rem; font-weight: 600; }
+.estado__acao { margin: 4px 0 0; font-size: 0.88rem; color: var(--texto-suave); }
+
+.etapas { display: flex; gap: 6px; margin-top: 18px; }
+.etapas__item {
+  flex: 1;
+  padding: 5px 0;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+  background: #eef1f5;
+  transition: background 0.3s, color 0.3s;
+}
+.etapas__item--ativo { background: var(--verde); color: #fff; }
+
+.com {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.com__ponto { flex: none; width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+.com--ok { background: color-mix(in srgb, var(--verde) 10%, #fff); color: #23703a; }
+.com--alarme { background: color-mix(in srgb, var(--vermelho) 9%, #fff); color: #a8282b; }
+.com--aviso { background: #fff5e0; color: #9a6200; }
+
+.detalhes { margin: 14px 0 0; display: grid; gap: 8px; }
+.detalhes div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--borda);
+  font-size: 0.84rem;
+}
+.detalhes div:last-child { border-bottom: none; padding-bottom: 0; }
+.detalhes dt { color: var(--texto-suave); }
+.detalhes dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+
+@media (max-width: 480px) {
+  .topo h1 { font-size: 1.3rem; }
+  .card { padding: 16px; }
+}
 </style>
