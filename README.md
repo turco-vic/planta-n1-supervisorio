@@ -1,4 +1,4 @@
-# Planta N1 — Separadora: contagem e supervisão da produção
+# Planta N1 - Separadora: contagem e supervisão da produção
 
 Gêmeo Exxer ⇄ Modbus TCP ⇄ S7-1500 (PLCSIM Advanced) ⇄ OPC UA ⇄ Node.js ⇄ Socket.IO ⇄ Vue
 
@@ -6,8 +6,9 @@ Gêmeo Exxer ⇄ Modbus TCP ⇄ S7-1500 (PLCSIM Advanced) ⇄ OPC UA ⇄ Node.js
 
 ```
 planta-n1/                 projeto Vue (interface gráfica)
-├── src/App.vue            tela: 4 indicadores, estado da máquina e comunicação OPC UA
+├── src/App.vue            tela: 4 indicadores circulares, estado da máquina e comunicação OPC UA
 ├── backend/server.js      cliente OPC UA + servidor Socket.IO (porta 3000)
+├── tia/projeto_TIA/       projeto TIA Portal V17 (só no zip entregue no Teams; abrir Semaforo.ap17)
 ├── tia/FB_ContagemN1.scl  DB_Producao_N1 + FB de contagem (fonte SCL)
 ├── tia/chamada_OB1.scl    chamada do FB no Main [OB1]
 └── NODEIDS.md             relação dos NodeIds
@@ -55,7 +56,7 @@ No PowerShell, dentro da pasta `backend`:
 npm.cmd install
 ```
 
-Abra `backend/server.js` e ajuste o bloco de configuração no topo:
+Abra `backend/server.js` e confira o bloco de configuração no topo (já está com os valores do projeto):
 
 - `ENDPOINT`: endereço do servidor OPC UA do CLP
 - `URI_NAMESPACE`: `http://vue`
@@ -67,7 +68,7 @@ Execute:
 node server.js
 ```
 
-O console mostra os NodeIds completos e o estado da conexão. Em http://localhost:3000 aparece um JSON com os valores lidos.
+O console mostra os NodeIds completos (`ns=4;i=3` a `ns=4;i=7`) e a mensagem "CONECTADO - Comunicação com o S7-1500 ativa". Em http://localhost:3000 aparece um JSON com os valores lidos. O aviso de "certificate subjectAltName" pode ser ignorado, porque a conexão usa SecurityPolicy None.
 
 ## 4. Interface Vue
 
@@ -82,13 +83,15 @@ Abra o endereço informado pelo Vite (normalmente http://localhost:5173). Os val
 
 ## Ordem de execução na demonstração
 
-1. Abrir o gêmeo Exxer da Planta N1 e selecionar a rede virtual do PLCSIM.
-2. Iniciar a instância no PLCSIM Advanced e colocar a CPU em RUN.
-3. `node server.js` na pasta `backend`.
-4. `npm.cmd run dev` na pasta principal e abrir a interface.
-5. Ligar a chave geral, dar Start e separar uma peça de cada cor, mostrando cada incremento.
-6. Interromper o OPC UA: o selo muda para **CLP desconectado** e os indicadores ficam esmaecidos com os últimos valores. Restabelecer: o backend reconecta sozinho em poucos segundos.
-7. Mostrar a linha de conferência abaixo dos indicadores: vermelhas + verdes + amarelas = produção total.
+1. Abrir o PLCSIM Advanced como administrador, selecionar *PLCSIM Virtual Eth. Adapter* e iniciar a instância (IP 169.254.171.199, máscara 255.255.0.0).
+2. No TIA, compilar, fazer o download pelo adaptador virtual (PN/IE_1, marcar *Show devices with the same addresses*), colocar em RUN e clicar em *Go online*.
+3. Abrir o gêmeo Exxer da Planta N1. Em *Configurações*, conferir IP **169.254.171.200** e porta **502**. O rodapé deve mostrar **Conectado**.
+4. Ligar a chave geral (estado 0 para 1) e apertar S1/Start (estado 1 para 2).
+5. `node server.js` na pasta `backend` e conferir o JSON em http://localhost:3000.
+6. `npm.cmd run dev` na pasta principal e abrir http://localhost:5173.
+7. Inserir uma peça de cada cor e mostrar cada incremento na tela, sem recarregar a página.
+8. Interromper a comunicação (Ctrl+C no backend): o selo muda para **Backend offline** e os valores ficam parados. Rodar `node server.js` de novo: a tela volta para **CLP conectado** com os mesmos contadores, porque eles ficam no DB Retain do CLP.
+9. Comprovar a consistência: vermelhas + verdes + amarelas = produção total (na tela, no JSON e no DB).
 
 ## Solução de problemas
 
@@ -98,4 +101,6 @@ Abra o endereço informado pelo Vite (normalmente http://localhost:5173). Os val
 | "namespace http://vue não encontrado" | A server interface `vue` foi criada e carregada no CLP? |
 | "leitura inválida ... BadNodeIdUnknown" | Identificador errado em `IDS`; confira no TIA. |
 | Interface mostra "Backend sem resposta" | O `node server.js` está rodando na porta 3000? |
+| Exxer mostra "Desconectado" | O IP do Exxer está na rede do laboratório (10.x)? Trocar para 169.254.171.200 em Configurações. Conferir a regra de firewall de entrada TCP 502. |
+| Start não muda o estado | Chave geral ligada e emergência liberada? Segurar o S1 por cerca de 1 s, porque a leitura Modbus é cíclica. |
 | Contador não incrementa | Monitore `"leituraModbus".dadosLeitura[20]` e confira se o bit da rampa muda. Confirme o `Clock_10Hz`. |
